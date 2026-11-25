@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: cosmobench
+abstract: >-
+  Benchmark harness measuring whether agent skills (cosmoskill, thcosmoskill) improve LLM answers in cosmology
+type: software
+authors:
+  - given-names: Corentin
+    family-names: Ravoux
+    email: corentin.ravoux.research@gmail.com
+version: "0.1.0"
+date-released: 2026-11-25
+license: MIT
+repository-code: "https://github.com/corentinravoux/cosmobench"
+url: "https://corentinravoux.github.io/cosmobench/"
+keywords:
+  - cosmology

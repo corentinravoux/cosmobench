@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cosmobench"
+dynamic = ["version"]
+description = "Benchmark harness measuring whether agent skills (cosmoskill, thcosmoskill) improve LLM answers in cosmology"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Corentin Ravoux", email = "corentin.ravoux.research@gmail.com"},
+]
+keywords = ["cosmology", "astrophysics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-cov", "ruff"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/corentinravoux/cosmobench"
+Documentation = "https://corentinravoux.github.io/cosmobench/"
+Repository = "https://github.com/corentinravoux/cosmobench"
+Issues = "https://github.com/corentinravoux/cosmobench/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "cosmobench.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cosmobench*"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+tag_name = "v{new_version}"
+message = "Bump version: {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "cosmobench/__init__.py"
