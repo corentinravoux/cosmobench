@@ -137,3 +137,8 @@ site/
 coverage.xml
 htmlcov/
 .ruff_cache/
+
+# benchmark data, answers and work files: never committed (reference answers, raw transcripts)
+/data/
+/results/
+/workdir/
