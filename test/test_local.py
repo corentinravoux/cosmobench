@@ -81,10 +81,15 @@ class LocalEnvTest(unittest.TestCase):
 
 
 class PilotGateTest(unittest.TestCase):
-    def write(self, d: Path, answers: list[dict], grades: list[dict]) -> None:
-        (d / "claimcheck").mkdir(parents=True)
+    def write(self, d: Path, answers: list[dict], grades: list[dict], models=("recipe-x",)) -> None:
+        (d / "claimcheck" / "raw").mkdir(parents=True)
         (d / "claimcheck" / "answers.jsonl").write_text("".join(json.dumps(a) + "\n" for a in answers))
         (d / "claimcheck" / "grades.jsonl").write_text("".join(json.dumps(g) + "\n" for g in grades))
+        for i, m in enumerate(models):
+            stream = [{"type": "system", "subtype": "init", "model": m}, "not json",
+                      {"type": "result", "modelUsage": {m: {"inputTokens": 1}}}]
+            (d / "claimcheck" / "raw" / f"i__D0__{i}.jsonl").write_text(
+                "".join((s if isinstance(s, str) else json.dumps(s)) + "\n" for s in stream))
 
     def rec(self, status="ok"):
         return {"item_id": "i", "arm": "D0", "status": status, "duration_ms": 1000, "num_turns": 1,
@@ -94,13 +99,29 @@ class PilotGateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             d = Path(t) / "ok"
             self.write(d, [self.rec()], [{"verdict": "correct"}] * 4)
-            self.assertEqual(local.pilot_gate(d), 0)
+            self.assertEqual(local.pilot_gate(d, model="recipe-x"), 0)
             d = Path(t) / "timeout"
             self.write(d, [self.rec("error")], [{"verdict": "missing"}] * 4)
-            self.assertEqual(local.pilot_gate(d), 1)
+            self.assertEqual(local.pilot_gate(d, model="recipe-x"), 1)
             d = Path(t) / "missing"
             self.write(d, [self.rec()], [{"verdict": "correct"}] * 49 + [{"verdict": "missing"}])
-            self.assertEqual(local.pilot_gate(d), 1)   # 2 % is not < 2 %
+            self.assertEqual(local.pilot_gate(d, model="recipe-x"), 1)   # 2 % is not < 2 %
+
+    def test_model_check(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t) / "anthropic"   # one call fell back to Anthropic (2026-11-25 incident)
+            self.write(d, [self.rec()], [{"verdict": "correct"}] * 4, models=("recipe-x", "claude-opus-5-5"))
+            self.assertEqual(local.answer_models(d), {"recipe-x", "claude-opus-5-5"})
+            self.assertEqual(local.pilot_gate(d, model="recipe-x"), 1)
+            d = Path(t) / "other"       # the server answered under another alias
+            self.write(d, [self.rec()], [{"verdict": "correct"}] * 4, models=("recipe-y",))
+            self.assertEqual(local.pilot_gate(d, model="recipe-x"), 1)
+            d = Path(t) / "env"         # default: BENCH_MODEL; unset means fail
+            self.write(d, [self.rec()], [{"verdict": "correct"}] * 4)
+            with mock.patch.dict("os.environ", {"BENCH_MODEL": "recipe-x"}):
+                self.assertEqual(local.pilot_gate(d), 0)
+            with mock.patch.dict("os.environ", {}, clear=True):
+                self.assertEqual(local.pilot_gate(d), 1)
 
 
 class MockServerTest(unittest.TestCase):

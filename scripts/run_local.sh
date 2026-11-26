@@ -74,7 +74,8 @@ check() {
   if ! "$PY" -m cosmobench.local check 2>&1 | tee -a "$RES/run.log"; then die "cosmobench.local check failed"; fi
   if [[ -f $PROBE ]]; then
     python3 -I "$PROBE" --url "http://127.0.0.1:$PORT" 2>&1 | tee "$RES/probe.txt" | tail -15 | tee -a "$RES/run.log"
-    grep -q FAIL "$RES/probe.txt" && die "llm_probe reports FAIL (see $RES/probe.txt)" || true
+    # the probe ends with "N FAIL, M WARN": a bare `grep FAIL` also matches "0 FAIL"
+    grep -qE "^\[FAIL\]|^[1-9][0-9]* FAIL" "$RES/probe.txt" && die "llm_probe reports FAIL (see $RES/probe.txt)" || true
   fi
 }
 

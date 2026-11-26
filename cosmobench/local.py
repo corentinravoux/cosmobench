@@ -137,9 +137,28 @@ def check(env: Mapping[str, str] | None = None) -> int:
     return 0 if ok else 1
 
 
-def pilot_gate(res: Path) -> int:
-    """Pilot gate before the full local run: every call ok (no timeout, no leak) and < 2 % missing
-    verdicts (V2). Prints per-arm duration, turns, skill and fetch use."""
+def answer_models(res: Path) -> set[str]:
+    """Models that answered, read from the raw streams under `res`: the session's init model and
+    the result's modelUsage keys. A call that reached Anthropic instead of the local server shows
+    a claude-* model here."""
+    models: set[str] = set()
+    for f in sorted(Path(res).glob("*/raw/*.jsonl")):
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                m = json.loads(line)
+            except ValueError:
+                continue
+            if m.get("type") == "system" and m.get("model"):
+                models.add(m["model"])
+            if m.get("type") == "result":
+                models |= set(m.get("modelUsage") or {})
+    return models
+
+
+def pilot_gate(res: Path, model: str | None = None) -> int:
+    """Pilot gate before the full local run: every call ok (no timeout, no leak), < 2 % missing
+    verdicts (V2), and every call answered by the local model (`model`, default BENCH_MODEL), with
+    no claude-* model in the raw streams. Prints per-arm duration, turns, skill and fetch use."""
     import statistics
 
     from .common import read_jsonl
@@ -159,8 +178,12 @@ def pilot_gate(res: Path) -> int:
                   f"median turns {statistics.median(a.get('num_turns') or 0 for a in rs)}, "
                   f"skill calls {sum(bool(a.get('skills_invoked')) for a in rs)}/{len(rs)}, "
                   f"fetch {sum((a.get('fetch_ok') or 0) > 0 for a in rs)}/{len(rs)}")
-    ok = bool(ans) and bool(grades) and not bad and missing < 0.02
-    print("PILOT GATE", "PASS" if ok else "FAIL (every call ok and < 2 % missing verdicts, V2)")
+    want = os.environ.get("BENCH_MODEL", "") if model is None else model
+    models = answer_models(res)
+    model_ok = bool(want) and want in models and not any("claude" in m for m in models)
+    print(f"  models seen in raw streams: {sorted(models)} (expected only {want!r})")
+    ok = bool(ans) and bool(grades) and not bad and missing < 0.02 and model_ok
+    print("PILOT GATE", "PASS" if ok else "FAIL (every call ok, < 2 % missing verdicts (V2), only the local model)")
     return 0 if ok else 1
 
 

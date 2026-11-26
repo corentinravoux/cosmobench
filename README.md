@@ -23,7 +23,6 @@ question sets ──▶ arms (claude -p, per-arm skills/tools) ──▶ answers
        report (accuracy, cost, isolation checks) ◀── grading ◀┘
 ```
 
-> Status: skeleton. The harness code is being moved in from its first home.
 
 ## Requirements
 
